@@ -29,7 +29,7 @@ TMP_DIR="$OUT_DIR/zip"
 FILE_NAME="ExtremeROM_${ROM_VERSION}_$(date +%Y%m%d)_${TARGET_CODENAME}"
 while [ -f "$OUT_DIR/$FILE_NAME" ]; do
     INCREMENTAL=$((INCREMENTAL + 1))
-    FILE_NAME="ExtremeROM_${ROM_VERSION}_$(date +%Y%m%d)-${INCREMENTAL}_${TARGET_CODENAME}.zip"
+    FILE_NAME="PeaceROM_${ROM_VERSION}_$(date +%Y%m%d)-${INCREMENTAL}_${TARGET_CODENAME}.zip"
 done
 
 trap 'rm -rf "$TMP_DIR"' EXIT INT
