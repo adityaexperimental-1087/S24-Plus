@@ -25,8 +25,8 @@ jobs:
           SPEED=$(speedtest-cli --secure --simple | grep 'Download' | awk '{print int($2)}')
           echo "Download speed: $SPEED Mbps"
           echo "speed=$SPEED" >> $GITHUB_OUTPUT
-          if [ "$SPEED" -lt 2400 ]; then
-            echo "Speed too low! ($SPEED Mbps, need ~2400 Mbps for 300 MB/s) Retrying..."
+          if [ "$SPEED" -lt 1500 ]; then
+            echo "Speed too low! ($SPEED Mbps, need ~1500 Mbps for 200 MB/s) Retrying..."
             curl -X POST \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
