@@ -80,6 +80,24 @@ jobs:
           source ./buildenv.sh ${{ matrix.target }}
           ./scripts/build_dependencies.sh
 
+      - name: Check network speed
+        id: speedtest
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y speedtest-cli curl jq
+          SPEED=$(speedtest-cli --secure --simple | grep 'Download' | awk '{print int($2)}')
+          echo "Download speed: $SPEED Mbps"
+          echo "speed=$SPEED" >> $GITHUB_OUTPUT
+          if [ "$SPEED" -lt 1500 ]; then
+            echo "Speed too low! ($SPEED Mbps, need ~1500 Mbps for 200 MB/s) Retrying..."
+            curl -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              https://api.github.com/repos/${{ github.repository }}/actions/workflows/build.yml/dispatches \
+              -d "{\"ref\":\"${{ github.ref_name }}\"}"
+            exit 1
+          fi
+
       - name: Download source firmware
         run: |
           source ./buildenv.sh ${{ matrix.target }}
