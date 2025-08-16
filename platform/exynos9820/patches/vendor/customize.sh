@@ -57,3 +57,8 @@ ADD_TO_WORK_DIR "p3sxxx" "vendor" "bin/hw/vendor.samsung.hardware.light-service"
 ADD_TO_WORK_DIR "p3sxxx" "vendor" "lib64/android.hardware.light-V1-ndk_platform.so"
 ADD_TO_WORK_DIR "p3sxxx" "vendor" "lib64/vendor.samsung.hardware.light-V1-ndk_platform.so"
 LOG_STEP_OUT
+
+LOG_STEP_IN "-Fixes locked out issues"
+SET_PROP "vendor" "ro.product.first_api_level" "30"
+SET_PROP "vendor" "ro.board.first_api_level" "30"
+LOG_STEP_OUT
