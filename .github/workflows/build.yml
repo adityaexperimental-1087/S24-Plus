@@ -9,12 +9,12 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-20.04
 
     strategy:
       fail-fast: false
       matrix:
-        target: [beyond1]
+        target: [r9s]
 
     steps:
       - name: Check network speed
