@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [r9s,bey1]
+        target: [beyond1]
 
     steps:
       - name: Check network speed
