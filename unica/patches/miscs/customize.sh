@@ -9,10 +9,6 @@ SET_PROP "system" "ro.build.display.id" "PeaceROM e2s $ROM_CODENAME $ROM_VERSION
 SET_PROP "vendor" "ro.frp.pst" ""
 SET_PROP "product" "ro.frp.pst" ""
 
-# Set Edge Lighting model
-MODEL=$(echo "$TARGET_FIRMWARE" | sed -E 's/^([^/]+)\/.*/\1/')
-SET_PROP "system" "ro.factory.model" "$MODEL"
-
 # Fix portrait mode
 SET_PROP "system" "ro.build.flavor" "$(GET_PROP "$FW_DIR/${MODEL}_${REGION}/system/system/build.prop" "ro.build.flavor")"
 
