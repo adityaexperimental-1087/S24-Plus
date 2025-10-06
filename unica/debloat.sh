@@ -170,6 +170,9 @@ system/priv-app/AppUpdateCenter
 system/priv-app/AutoDoodle
 system/priv-app/AvatarEmojiSticker
 system/priv-app/BeaconManager
+system/priv-app/Bixby
+system/priv-app/BixbyInterpreter
+system/priv-app/BixbyVisionFramework3.5
 system/priv-app/DynamicLockscreen
 system/priv-app/FBInstaller_NS
 system/priv-app/FBServices
@@ -184,6 +187,7 @@ system/priv-app/StoryService
 system/priv-app/StickerFaceARAvatar
 system/priv-app/SmartSwitchAssistant
 system/app/SmartManager_v6_DeviceSecurity
+system/priv-app/SettingsBixby
 system/priv-app/SamsungSmartSuggestions
 system/priv-app/SamsungPass
 system/priv-app/SamsungMagnifier3
