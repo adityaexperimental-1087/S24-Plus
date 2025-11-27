@@ -20,19 +20,13 @@ jobs:
       - name: Check network speed (Fast)
         id: speedtest
         run: |
-          # Fast check using curl instead of installing speedtest-cli
           echo "Testing download speed..."
-          # Download 100MB file to null, output speed in bytes/sec
           SPEED_BPS=$(curl -s -w "%{speed_download}" -o /dev/null http://speedtest.tele2.net/100MB.zip)
-          
-          # Convert to Mbps (approximate)
           SPEED_MBPS=$(echo "$SPEED_BPS / 125000" | bc)
           echo "Download speed: $SPEED_MBPS Mbps"
-          echo "speed=$SPEED_MBPS" >> $GITHUB_OUTPUT
           
-          # Threshold: 50 Mbps (adjust if needed)
           if [ "$SPEED_MBPS" -lt 50 ]; then
-            echo "Speed too low! ($SPEED_MBPS Mbps). Retrying..."
+            echo "Speed too low! ($SPEED_MBPS 50 Mbps). Retrying..."
             curl -X POST \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
@@ -45,66 +39,42 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          submodules: false  # <--- CRITICAL: Turn off the slow default fetch
+          submodules: false
 
-      - name: Checkout Submodules (Fast)
+      - name: Checkout Submodules (Parallel)
         run: |
-          # Fetch submodules in parallel (8 threads) instead of 1 by 1
           git submodule update --init --recursive --depth 1 --jobs 8
 
       - name: Free disk space (Fast)
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
-          sudo docker builder prune -a --force  # <--- Added --force here
+          sudo docker builder prune -a --force
 
       - name: Free disk space (Aggressive)
         uses: rokibhasansagar/slimhub_actions@main
         with:
           retain: 'compiler_cmake'
 
+      # CACHE TOOLS (This is the one that works well!)
       - name: Cache Build Tools
+        id: tool-cache
         uses: actions/cache@v4
         with:
           path: |
-            tools/apktool/framework
+            tools/
             ~/.ccache
-          key: ${{ runner.os }}-build-${{ hashFiles('scripts/**') }}
-          restore-keys: |
-            ${{ runner.os }}-build-
-
-      - name: Set up build environment
-        run: |
-          sudo apt update
-          DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
-            jq attr ccache clang ffmpeg golang \
-            libbrotli-dev libgtest-dev libprotobuf-dev libunwind-dev libpcre2-dev \
-            libzstd-dev linux-modules-extra-$(uname -r) lld protobuf-compiler webp \
-            curl xxd patchelf flex bison libarchive-tools build-essential pcre2-utils
-          sudo modprobe erofs f2fs
-          
-          # 1. FIX PERMISSIONS (Solves "Permission denied" error)
-          chmod -R +x scripts/
-          
-          # 2. OPTIMIZE APKTOOL (Solves slow build speed)
-          # Removes the line that forces 1 thread on GitHub Actions
-          sed -i '/GITHUB_ACTIONS.*THREAD_COUNT=1/d' scripts/apktool.sh
-          
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-          cache: 'gradle'
+          key: ${{ runner.os }}-build-tools-${{ hashFiles('scripts/build_dependencies.sh') }}
 
       - name: Build dependencies
+        if: steps.tool-cache.outputs.cache-hit != 'true'
         run: |
           source ./buildenv.sh ${{ matrix.target }}
+          export USE_CCACHE=1
+          export CCACHE_EXEC=/usr/bin/ccache
           ./scripts/build_dependencies.sh
 
+      # PARALLEL DOWNLOADS (Safe to keep parallel)
       - name: Download Firmware (Parallel)
         run: |
           source ./buildenv.sh ${{ matrix.target }}
@@ -120,20 +90,17 @@ jobs:
           wait $PID_TGT
           echo "Both downloads finished."
 
-      - name: Extract Firmware (Parallel)
+      # CRASH FIX: Reverted to Sequential Extraction
+      # We cannot extract both at once (RAM crash) and we cannot cache result (Too big).
+      - name: Extract Firmware (Sequential)
         run: |
           source ./buildenv.sh ${{ matrix.target }}
-          echo "Starting Source Extraction..."
-          ./scripts/extract_fw.sh --force --ignore-target &
-          PID_SRC=$!
           
-          echo "Starting Target Extraction..."
-          ./scripts/extract_fw.sh --force --ignore-source &
-          PID_TGT=$!
+          echo "Extracting Source..."
+          ./scripts/extract_fw.sh --force --ignore-target
           
-          wait $PID_SRC
-          wait $PID_TGT
-          echo "Both extractions finished."
+          echo "Extracting Target..."
+          ./scripts/extract_fw.sh --force --ignore-source
 
       - name: Build ROM
         run: |
