@@ -45,36 +45,38 @@ jobs:
         run: |
           git submodule update --init --recursive --depth 1 --jobs 8
 
-      - name: Set up JDK 21
+      # --- CRITICAL FIX: USE JAVA 17 ---
+      # Your Gradle wrapper is too old for Java 21. Reverting to 17 fixes the "invalid directory" error.
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
           cache: 'gradle'
 
-      # --- THE FIX: FAKE JDK 17 LINK ---
-      - name: Symlink JDK 17 to JDK 21
+      # --- CRITICAL FIX: SYMLINK FOR HARDCODED SCRIPTS ---
+      # This tricks your script into finding "temurin-17-jdk-amd64" exactly where it expects it.
+      - name: Link Hardcoded Java Path
         run: |
-          # 1. Create the folder structure expected by your script
           sudo mkdir -p /usr/lib/jvm
-          
-          # 2. Link the expected "JDK 17" path to our actual JDK 21
-          # When the script goes to .../temurin-17..., it actually lands in JDK 21.
           sudo ln -sfn $JAVA_HOME /usr/lib/jvm/temurin-17-jdk-amd64
-          
-          echo "Symlink created. Testing..."
-          ls -l /usr/lib/jvm/temurin-17-jdk-amd64
+          echo "Symlink created. Script will now find Java 17 correctly."
 
-      - name: Free disk space (Fast)
+      # --- SCORCHED EARTH DISK CLEANUP (Max Space for 85GB+) ---
+      - name: Maximize Disk Space
         run: |
+          # Delete huge pre-installed packages
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          
+          # Delete extra languages/tools
+          sudo rm -rf /usr/share/swift /usr/share/java /usr/local/share/powershell /usr/lib/google-cloud-sdk
+          
+          # Docker cleanup
           sudo docker image prune --all --force
           sudo docker builder prune -a --force
-
-      - name: Free disk space (Aggressive)
-        uses: rokibhasansagar/slimhub_actions@main
-        with:
-          retain: 'compiler_cmake'
+          
+          echo "Disk cleaned. Available Space:"
+          df -h
 
       - name: Cache Build Tools
         id: tool-cache
