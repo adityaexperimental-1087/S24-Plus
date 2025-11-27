@@ -29,12 +29,13 @@ FILE=""
 INPUT_FILE=""
 OUTPUT_PATH=""
 
+# CALCULATE MAX THREADS AVAILABLE
 THREAD_COUNT=$(awk -v max="$(nproc)" '/MemTotal/ {
   tc = int(($2 + 1048575) / 2097152);
   print (tc < 1 ? 1 : (tc > max ? max : tc));
 }' /proc/meminfo)
 
-[ -n "$GITHUB_ACTIONS" ] && THREAD_COUNT=1
+# REMOVED: [ -n "$GITHUB_ACTIONS" ] && THREAD_COUNT=1
 
 BUILD()
 {
