@@ -45,22 +45,12 @@ jobs:
         run: |
           git submodule update --init --recursive --depth 1 --jobs 8
 
-      # --- CRITICAL FIX: USE JAVA 17 ---
-      # Your Gradle wrapper is too old for Java 21. Reverting to 17 fixes the "invalid directory" error.
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
-
-      # --- CRITICAL FIX: SYMLINK FOR HARDCODED SCRIPTS ---
-      # This tricks your script into finding "temurin-17-jdk-amd64" exactly where it expects it.
-      - name: Link Hardcoded Java Path
-        run: |
-          sudo mkdir -p /usr/lib/jvm
-          sudo ln -sfn $JAVA_HOME /usr/lib/jvm/temurin-17-jdk-amd64
-          echo "Symlink created. Script will now find Java 17 correctly."
 
       # --- SCORCHED EARTH DISK CLEANUP (Max Space for 85GB+) ---
       - name: Maximize Disk Space
