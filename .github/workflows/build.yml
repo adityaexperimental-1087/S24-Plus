@@ -45,6 +45,26 @@ jobs:
         run: |
           git submodule update --init --recursive --depth 1 --jobs 8
 
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      # --- THE FIX: FAKE JDK 17 LINK ---
+      - name: Symlink JDK 17 to JDK 21
+        run: |
+          # 1. Create the folder structure expected by your script
+          sudo mkdir -p /usr/lib/jvm
+          
+          # 2. Link the expected "JDK 17" path to our actual JDK 21
+          # When the script goes to .../temurin-17..., it actually lands in JDK 21.
+          sudo ln -sfn $JAVA_HOME /usr/lib/jvm/temurin-17-jdk-amd64
+          
+          echo "Symlink created. Testing..."
+          ls -l /usr/lib/jvm/temurin-17-jdk-amd64
+
       - name: Free disk space (Fast)
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
@@ -65,7 +85,6 @@ jobs:
             ~/.ccache
           key: ${{ runner.os }}-build-tools-${{ hashFiles('scripts/build_dependencies.sh') }}
 
-      # --- RESTORED STEP BELOW ---
       - name: Set up build environment
         run: |
           sudo apt update
@@ -76,7 +95,6 @@ jobs:
             curl xxd patchelf flex bison libarchive-tools build-essential pcre2-utils
           sudo modprobe erofs f2fs
           
-          # Safety check for permissions (Good to keep as a failsafe)
           chmod -R +x scripts/
           
           git config --global user.name "github-actions[bot]"
