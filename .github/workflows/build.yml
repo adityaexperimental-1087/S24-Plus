@@ -17,16 +17,22 @@ jobs:
         target: [r9s]
 
     steps:
-      - name: Check network speed
+      - name: Check network speed (Fast)
         id: speedtest
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y speedtest-cli curl jq
-          SPEED=$(speedtest-cli --secure --simple | grep 'Download' | awk '{print int($2)}')
-          echo "Download speed: $SPEED Mbps"
-          echo "speed=$SPEED" >> $GITHUB_OUTPUT
-          if [ "$SPEED" -lt 1500 ]; then
-            echo "Speed too low! ($SPEED Mbps, need ~1500 Mbps for 200 MB/s) Retrying..."
+          # Fast check using curl instead of installing speedtest-cli
+          echo "Testing download speed..."
+          # Download 100MB file to null, output speed in bytes/sec
+          SPEED_BPS=$(curl -s -w "%{speed_download}" -o /dev/null http://speedtest.tele2.net/100MB.zip)
+          
+          # Convert to Mbps (approximate)
+          SPEED_MBPS=$(echo "$SPEED_BPS / 125000" | bc)
+          echo "Download speed: $SPEED_MBPS Mbps"
+          echo "speed=$SPEED_MBPS" >> $GITHUB_OUTPUT
+          
+          # Threshold: 1500 Mbps (adjust if needed)
+          if [ "$SPEED_MBPS" -lt 1500 ]; then
+            echo "Speed too low! ($SPEED_MBPS Mbps). Retrying..."
             curl -X POST \
               -H "Accept: application/vnd.github+json" \
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
@@ -34,11 +40,12 @@ jobs:
               -d "{\"ref\":\"${{ github.ref_name }}\"}"
             exit 1
           fi
-          
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 1  # Shallow clone to save bandwidth
 
       - name: Free disk space (Fast)
         run: |
@@ -46,12 +53,20 @@ jobs:
           sudo docker image prune --all --force
           sudo docker builder prune -a
 
-      # REMOVED: jlumbroso/free-disk-space (Too slow)
-
       - name: Free disk space (Aggressive)
         uses: rokibhasansagar/slimhub_actions@main
         with:
           retain: 'compiler_cmake'
+
+      - name: Cache Build Tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            tools/apktool/framework
+            ~/.ccache
+          key: ${{ runner.os }}-build-${{ hashFiles('scripts/**') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
 
       - name: Set up build environment
         run: |
@@ -63,8 +78,12 @@ jobs:
             curl xxd patchelf flex bison libarchive-tools build-essential pcre2-utils
           sudo modprobe erofs f2fs
           
-          # Fix permissions
+          # 1. FIX PERMISSIONS (Solves "Permission denied" error)
           chmod -R +x scripts/
+          
+          # 2. OPTIMIZE APKTOOL (Solves slow build speed)
+          # Removes the line that forces 1 thread on GitHub Actions
+          sed -i '/GITHUB_ACTIONS.*THREAD_COUNT=1/d' scripts/apktool.sh
           
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -81,8 +100,6 @@ jobs:
           source ./buildenv.sh ${{ matrix.target }}
           ./scripts/build_dependencies.sh
 
-      # PARALLEL DOWNLOADS
-      # We run both download scripts in the background using '&' and wait for both to finish.
       - name: Download Firmware (Parallel)
         run: |
           source ./buildenv.sh ${{ matrix.target }}
@@ -98,7 +115,6 @@ jobs:
           wait $PID_TGT
           echo "Both downloads finished."
 
-      # PARALLEL EXTRACTION
       - name: Extract Firmware (Parallel)
         run: |
           source ./buildenv.sh ${{ matrix.target }}
