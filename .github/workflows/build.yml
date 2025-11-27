@@ -44,8 +44,13 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
-          fetch-depth: 1  # Shallow clone to save bandwidth
+          fetch-depth: 1
+          submodules: false  # <--- CRITICAL: Turn off the slow default fetch
+
+      - name: Checkout Submodules (Fast)
+        run: |
+          # Fetch submodules in parallel (8 threads) instead of 1 by 1
+          git submodule update --init --recursive --depth 1 --jobs 8
 
       - name: Free disk space (Fast)
         run: |
